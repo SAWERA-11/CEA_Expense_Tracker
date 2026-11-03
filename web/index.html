@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Expense Tracker</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 780px; margin: 40px auto; padding: 0 16px; color: #222; }
+  form { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; margin: 20px 0 8px; }
+  input, select, button { padding: 8px; font-size: 14px; }
+  button { cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+  #total { font-size: 18px; margin-top: 16px; }
+  #error { color: #b00020; min-height: 20px; }
+</style>
+</head>
+<body>
+  <h1>Student Expense Tracker</h1>
+  <p>SE-490 Cloud Computing CEA</p>
+  <form id="form">
+    <input id="title" placeholder="What did you buy?" required>
+    <input id="amount" type="number" step="0.01" min="0.01" placeholder="Amount" required>
+    <select id="category">
+      <option>Food</option><option>Transport</option><option>Books</option><option>Bills</option><option>Other</option>
+    </select>
+    <input id="spent_on" type="date" required>
+    <button type="submit">Add</button>
+  </form>
+  <div id="error"></div>
+  <table>
+    <thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Amount</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="total"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+$('spent_on').value = new Date().toISOString().slice(0, 10);
+async function load() {
+  try {
+    const res = await fetch('/api/expenses');
+    const expenses = await res.json();
+    $('rows').innerHTML = '';
+    let total = 0;
+    for (const e of expenses) {
+      total += Number(e.amount);
+      const tr = document.createElement('tr');
+      for (const value of [e.spent_on, e.title, e.category, Number(e.amount).toFixed(2)]) {
+        const td = document.createElement('td');
+        td.textContent = value;
+        tr.appendChild(td);
+      }
+      const btn = document.createElement('button');
+      btn.textContent = 'Delete';
+      btn.onclick = async () => { await fetch(`/api/expenses/${e.id}`, { method: 'DELETE' }); load(); };
+      const td = document.createElement('td');
+      td.appendChild(btn);
+      tr.appendChild(td);
+      $('rows').appendChild(tr);
+    }
+    $('total').textContent = `Total spent: ${total.toFixed(2)}`;
+  } catch {
+    $('error').textContent = 'Could not reach the API';
+  }
+}
+$('form').onsubmit = async (ev) => {
+  ev.preventDefault();
+  $('error').textContent = '';
+  const body = { title: $('title').value, amount: $('amount').value, category: $('category').value, spent_on: $('spent_on').value };
+  const res = await fetch('/api/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) { $('error').textContent = (await res.json()).error; return; }
+  $('title').value = ''; $('amount').value = '';
+  load();
+};
+load();
+</script>
+</body>
+</html>
