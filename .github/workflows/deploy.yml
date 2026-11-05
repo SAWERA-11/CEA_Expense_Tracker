@@ -66,6 +66,11 @@ jobs:
     name: 3. Deploy to AWS
     needs: build-and-push
     runs-on: ubuntu-latest
+    environment:
+      name: production
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Get temporary AWS credentials (OIDC, no stored keys)
         uses: aws-actions/configure-aws-credentials@v4
