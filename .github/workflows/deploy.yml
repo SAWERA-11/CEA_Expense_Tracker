@@ -72,6 +72,18 @@ jobs:
       id-token: write
       contents: read
     steps:
+      - name: "Debug: show OIDC token claims"
+        run: |
+          RESP=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
+          PAYLOAD=$(echo "$RESP" | jq -r .value | cut -d. -f2)
+          python3 - "$PAYLOAD" <<'EOF'
+          import sys, base64, json
+          p = sys.argv[1]; p += "=" * (-len(p) % 4)
+          c = json.loads(base64.urlsafe_b64decode(p))
+          for k in ["sub", "aud", "iss", "repository", "repository_owner", "ref", "environment"]:
+              print(f"{k}: {c.get(k)}")
+          EOF
+
       - name: Get temporary AWS credentials (OIDC, no stored keys)
         uses: aws-actions/configure-aws-credentials@v4
         with:
